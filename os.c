@@ -26,5 +26,19 @@ int main() {
             strcpy(line, last);
             printf("%s\n", line);
         } else
-            strcpy(last, line);}
+            strcpy(last, line);
+
+        //exit
+        if (!strcmp (line,"exit")) break; 
+        //pwd
+        if (!strcmp(line ,"pwd")){
+            char cwd[1024];
+            getcwd(cwd,sizeof(cwd));
+            printf("%s\n",cwd);
+            continue;
+        
+        }
+
+
             
+}}
