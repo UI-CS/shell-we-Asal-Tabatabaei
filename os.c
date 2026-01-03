@@ -7,15 +7,34 @@
 
 #define MAX 1024
 
-char last[MAX];
+char last[MAX]= "";
+
+
+
+/* ---------- Parse input ---------- */
+void parse(char *line, char **args) {
+    int i = 0;
+    char *token = strtok(line, " ");
+    while (token != NULL) {
+        args[i++] = token;
+        token = strtok(NULL, " ");
+    }
+    args[i] = NULL;
+}
+
 int main() {
     char line[MAX];
+    char *args[MAX];
 
     while (1) {
-        printf("sh> ");
-        fgets(line, MAX, stdin);
-        line[strcspn(line, "\n")] = 0;
+        /* reap zombie processes */
+        while (waitpid(-1, NULL, WNOHANG) > 0);
 
+        printf("sh> ");
+        if (!fgets(line, MAX, stdin))
+            break;
+
+        line[strcspn(line, "\n")] = 0;
 
         // history
         if (!strcmp(line, "!!")) {
@@ -38,6 +57,10 @@ int main() {
             continue;
         
         }
+        /* ---------- parse ---------- */
+        parse(line, args);
+        if (args[0] == NULL)
+            continue;
 
 
             
