@@ -3,6 +3,9 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/wait.h>
+#include <pthread.h>
+#include <time.h>
+#include <math.h>
 
 
 #define MAX 1024
@@ -21,6 +24,36 @@ void parse(char *line, char **args) {
     }
     args[i] = NULL;
 }
+long long total_inside = 0;
+pthread_mutex_t mc_mutex;
+
+typedef struct {
+    long long points;
+    unsigned int seed;
+} mc_args;
+
+
+
+
+void *monte_carlo_worker(void *arg) {
+    mc_args *data = (mc_args *)arg;
+    long long inside = 0;
+
+    for (long long i = 0; i < data->points; i++) {
+        double x = (double)rand_r(&data->seed) / RAND_MAX * 2.0 - 1.0;
+        double y = (double)rand_r(&data->seed) / RAND_MAX * 2.0 - 1.0;
+
+        if (x * x + y * y <= 1.0)
+            inside++;
+    }
+
+    pthread_mutex_lock(&mc_mutex);
+    total_inside += inside;
+    pthread_mutex_unlock(&mc_mutex);
+
+    pthread_exit(NULL);
+}
+
 
 int main() {
     char line[MAX];
@@ -84,6 +117,50 @@ int main() {
             printf("  !!          - repeat last command\n");
             printf("  cmd &       - run command in background\n");
             printf("  cmd1 | cmd2 - pipe output to another command\n");
+            continue;
+        }
+
+
+
+
+
+        // Monte Carlo Pi Estimation
+        if (strcmp(args[0], "mont_carlo") == 0) {
+            if (args[1] == NULL || args[2] == NULL) {
+                printf("Usage: mont_carlo <threads> <points>\n");
+                continue;
+            }
+
+            int threads_count = atoi(args[1]);
+            long long total_points = atoll(args[2]);
+
+            if (threads_count <= 0 || total_points <= 0) {
+                printf("Invalid arguments\n");
+                continue;
+            }
+
+            pthread_t threads[threads_count];
+            mc_args params[threads_count];
+
+            pthread_mutex_init(&mc_mutex, NULL);
+            total_inside = 0;
+
+            long long points_per_thread = total_points / threads_count;
+
+            for (int i = 0; i < threads_count; i++) {
+                params[i].points = points_per_thread;
+                params[i].seed = time(NULL) ^ (i << 16);
+                pthread_create(&threads[i], NULL, monte_carlo_worker, &params[i]);
+            }
+
+            for (int i = 0; i < threads_count; i++) {
+                pthread_join(threads[i], NULL);
+            }
+
+            double pi = 4.0 * total_inside / total_points;
+            printf("Estimated Pi = %.6f\n", pi);
+
+            pthread_mutex_destroy(&mc_mutex);
             continue;
         }
 
