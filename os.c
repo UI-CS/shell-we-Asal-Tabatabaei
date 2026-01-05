@@ -25,6 +25,7 @@ void parse(char *line, char **args) {
 int main() {
     char line[MAX];
     char *args[MAX];
+    int should_run = 1; 
 
     while (1) {
         /* reap zombie processes */
@@ -47,20 +48,33 @@ int main() {
         } else
             strcpy(last, line);
 
+        /* ---------- parse ---------- */
+        parse(line, args);
+        if (args[0] == NULL)
+            continue;
+
         //exit
-        if (!strcmp (line,"exit")) break; 
+        if (!strcmp(args[0], "exit")) {
+            should_run = 0;   // 🔹 terminate shell
+            continue;
+        }
         //pwd
-        if (!strcmp(line ,"pwd")){
-            char cwd[1024];
+        if (!strcmp(args[0] ,"pwd")){
+            char cwd[MAX];
             getcwd(cwd,sizeof(cwd));
             printf("%s\n",cwd);
             continue;
         
         }
-        /* ---------- parse ---------- */
-        parse(line, args);
-        if (args[0] == NULL)
+
+        //cd
+        if(strcmp(args[0], "cd")==0){
+            if (chdir (args[1] )!= 0){
+                perror("cd failed");
+            }
             continue;
+        }
+        
 
 
             
