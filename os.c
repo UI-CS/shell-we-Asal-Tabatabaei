@@ -56,6 +56,7 @@ void *monte_carlo_worker(void *arg) {
 
 
 int main() {
+    setenv("PATH", "/usr/local/bin:/usr/bin:/bin", 1);
     char line[MAX];
     char *args[MAX];
     int should_run = 1; 
