@@ -74,7 +74,19 @@ int main() {
             }
             continue;
         }
-        
+        // help
+        if (strcmp(args[0], "help") == 0) {
+            printf("Available commands:\n");
+            printf("  exit        - terminate the shell\n");
+            printf("  cd <dir>    - change directory\n");
+            printf("  pwd         - print working directory\n");
+            printf("  help        - show this help message\n");
+            printf("  !!          - repeat last command\n");
+            printf("  cmd &       - run command in background\n");
+            printf("  cmd1 | cmd2 - pipe output to another command\n");
+            continue;
+        }
+
 
 
             
