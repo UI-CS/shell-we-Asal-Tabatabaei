@@ -159,7 +159,7 @@ int main() {
         
 
 
-         pid_t pid = fork();
+        pid_t pid = fork();
 
         if (pid < 0) {
             perror("Fork failed");
@@ -188,3 +188,5 @@ int main() {
 
             
 }
+//Parallel Sudoku Validator
+//Monte Carlo Pi Estimation
