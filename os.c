@@ -6,7 +6,7 @@
 #include <pthread.h>
 #include <time.h>
 #include <math.h>
-
+#include <fcntl.h>
 
 #define MAX 1024
 
@@ -26,12 +26,75 @@ void parse(char *line, char **args) {
 }
 long long total_inside = 0;
 pthread_mutex_t mc_mutex;
+int sudoku[9][9];
+int valid[11]; 
+typedef struct {
+    int row;
+    int column;
+    int index;
+} parameters;
 
 typedef struct {
     long long points;
     unsigned int seed;
 } mc_args;
 
+
+void *check_rows(void *param) {
+    int seen[10];
+
+    for (int i = 0; i < 9; i++) {
+        memset(seen, 0, sizeof(seen));
+        for (int j = 0; j < 9; j++) {
+            int num = sudoku[i][j];
+            if (num < 1 || num > 9 || seen[num]) {
+                valid[0] = 0;
+                pthread_exit(NULL);
+            }
+            seen[num] = 1;
+        }
+    }
+    valid[0] = 1;
+    pthread_exit(NULL);
+}
+
+void *check_cols(void *param) {
+    int seen[10];
+
+    for (int j = 0; j < 9; j++) {
+        memset(seen, 0, sizeof(seen));
+        for (int i = 0; i < 9; i++) {
+            int num = sudoku[i][j];
+            if (num < 1 || num > 9 || seen[num]) {
+                valid[1] = 0;
+                pthread_exit(NULL);
+            }
+            seen[num] = 1;
+        }
+    }
+    valid[1] = 1;
+    pthread_exit(NULL);
+}
+
+
+void *check_subgrid(void *param) {
+    parameters *p = (parameters *)param;
+    int seen[10] = {0};
+
+    for (int i = p->row; i < p->row + 3; i++) {
+        for (int j = p->column; j < p->column + 3; j++) {
+            int num = sudoku[i][j];
+            if (num < 1 || num > 9 || seen[num]) {
+                valid[p->index] = 0;
+                pthread_exit(NULL);
+            }
+            seen[num] = 1;
+        }
+    }
+
+    valid[p->index] = 1;
+    pthread_exit(NULL);
+}
 
 
 
@@ -118,6 +181,83 @@ int main() {
             printf("  !!          - repeat last command\n");
             printf("  cmd &       - run command in background\n");
             printf("  cmd1 | cmd2 - pipe output to another command\n");
+            continue;
+        }
+
+
+        if (strcmp(args[0], "sudoku") == 0) {
+            if (args[1] == NULL) {
+                printf("Usage: sudoku <file>\n");
+                continue;
+            }
+
+            // ---------- File open ----------
+            int fd = open(args[1], O_RDONLY);
+            if (fd < 0) {
+                perror("File open error");
+                continue; //We use continue instead of exit(1) to prevent shell termination.
+            }
+
+            FILE *fp = fdopen(fd, "r");
+            if (!fp) {
+                perror("fdopen failed");
+                close(fd);
+                continue;
+            }
+
+            int invalid = 0;
+            for (int i = 0; i < 9 && !invalid; i++) {
+                for (int j = 0; j < 9; j++) {
+                    if (fscanf(fp, "%d", &sudoku[i][j]) != 1) {
+                        invalid = 1;
+                        break;
+                    }
+                }
+            }
+            fclose(fp);
+            if (invalid) {     
+                printf("Invalid sudoku file\n");
+                continue;
+            }
+
+            for (int i = 0; i < 11; i++)   
+                valid[i] = 0;
+
+
+            // ---------- Threads ----------
+            pthread_t threads[11];
+            parameters params[9];
+
+            pthread_create(&threads[0], NULL, check_rows, NULL);
+            pthread_create(&threads[1], NULL, check_cols, NULL);
+
+            int idx = 2;
+            for (int i = 0; i < 9; i += 3) {
+                for (int j = 0; j < 9; j += 3) {
+                    params[idx - 2].row = i;
+                    params[idx - 2].column = j;
+                    params[idx - 2].index = idx;
+                    pthread_create(&threads[idx], NULL, check_subgrid, &params[idx - 2]);
+                    idx++;
+                }
+            }
+
+            for (int i = 0; i < 11; i++)
+                pthread_join(threads[i], NULL);
+
+            int ok = 1;
+            for (int i = 0; i < 11; i++) {
+                if (valid[i] == 0) {
+                    ok = 0;
+                    break;
+                }
+            }
+
+            if (ok)
+                printf("Sudoku is VALID ✅\n");
+            else
+                printf("Sudoku is INVALID ❌\n");
+
             continue;
         }
 
